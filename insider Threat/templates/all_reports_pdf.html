@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>All Security Reports</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 30px;
+            color: #000;
+            background-color: #fff;
+            line-height: 1.4;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            border-bottom: 2px solid #333;
+            padding-bottom: 20px;
+        }
+        .summary {
+            background-color: #f8f9fa;
+            border: 1px solid #ddd;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+        table {
+            border-collapse: collapse;
+            width: 100%;
+            font-size: 10pt;
+            margin-bottom: 15px;
+        }
+        th, td {
+            border: 1px solid #444;
+            padding: 5px 7px;
+            text-align: left;
+        }
+        th {
+            background-color: #f3f3f3;
+            font-weight: bold;
+        }
+        tr:nth-child(even) {
+            background-color: #fafafa;
+        }
+        .risk-high { color: #dc3545; font-weight: bold; }
+        .risk-medium { color: #fd7e14; font-weight: bold; }
+        .risk-low { color: #28a745; font-weight: bold; }
+        .footer {
+            margin-top: 40px;
+            font-size: 10pt;
+            text-align: center;
+            color: #666;
+            border-top: 1px solid #ccc;
+            padding-top: 15px;
+        }
+        .page-break {
+            page-break-before: always;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🔒 All Security Reports</h1>
+        <p><strong>Insider Threat Detection System</strong></p>
+    </div>
+
+    <div class="summary">
+        <h2>Report Summary</h2>
+        <p><strong>Total Reports:</strong> {{ reports|length }}</p>
+        <p><strong>Generated:</strong> {{ current_time }}</p>
+        <p>This document contains all suspicious activity reports from the system.</p>
+    </div>
+
+    <div class="section">
+        <h3>All Suspicious Activities</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Timestamp</th>
+                    <th>Activity Type</th>
+                    <th>Source IP</th>
+                    <th>Username</th>
+                    <th>Risk Level</th>
+                    <th>Status</th>
+                    <th>Details</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for report in reports %}
+                <tr>
+                    <td>{{ report.id }}</td>
+                    <td>{{ report.timestamp }}</td>
+                    <td>{{ report.activity_type }}</td>
+                    <td>{{ report.source_ip or 'N/A' }}</td>
+                    <td>{{ report.username or 'N/A' }}</td>
+                    <td><span class="risk-{{ report.risk_level.lower() }}">{{ report.risk_level }}</span></td>
+                    <td>{{ report.status.title() }}</td>
+                    <td>{{ report.details or 'No details' }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <div class="footer">
+        <p><strong>Generated:</strong> {{ current_time }}</p>
+        <p><em>This is an automated report from the Insider Threat Detection System</em></p>
+        <p>Total reports included: {{ reports|length }}</p>
+    </div>
+</body>
+</html>

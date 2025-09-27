@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Security Report #{{ report.id }}</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 30px;
+            color: #000;
+            background-color: #fff;
+            line-height: 1.4;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            border-bottom: 2px solid #333;
+            padding-bottom: 20px;
+        }
+        .report-info {
+            background-color: #f8f9fa;
+            border: 1px solid #ddd;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+        .section {
+            margin-bottom: 25px;
+        }
+        .section h3 {
+            background-color: #e9ecef;
+            padding: 8px 12px;
+            margin: 0 0 10px 0;
+            border-left: 4px solid #007bff;
+        }
+        table {
+            border-collapse: collapse;
+            width: 100%;
+            font-size: 11pt;
+            margin-bottom: 15px;
+        }
+        th, td {
+            border: 1px solid #444;
+            padding: 6px 8px;
+            text-align: left;
+        }
+        th {
+            background-color: #f3f3f3;
+            font-weight: bold;
+        }
+        tr:nth-child(even) {
+            background-color: #fafafa;
+        }
+        .risk-high { color: #dc3545; font-weight: bold; }
+        .risk-medium { color: #fd7e14; font-weight: bold; }
+        .risk-low { color: #28a745; font-weight: bold; }
+        .footer {
+            margin-top: 40px;
+            font-size: 10pt;
+            text-align: center;
+            color: #666;
+            border-top: 1px solid #ccc;
+            padding-top: 15px;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🔒 Security Report #{{ report.id }}</h1>
+        <p><strong>Insider Threat Detection System</strong></p>
+    </div>
+
+    <div class="report-info">
+        <h2>Report Summary</h2>
+        <table>
+            <tr><th>Report ID</th><td>{{ report.id }}</td></tr>
+            <tr><th>Timestamp</th><td>{{ report.timestamp }}</td></tr>
+            <tr><th>Activity Type</th><td>{{ report.activity_type }}</td></tr>
+            <tr><th>Source IP</th><td>{{ report.source_ip or 'N/A' }}</td></tr>
+            <tr><th>Username</th><td>{{ report.username or 'N/A' }}</td></tr>
+            <tr><th>Risk Level</th><td><span class="risk-{{ report.risk_level.lower() }}">{{ report.risk_level }}</span></td></tr>
+            <tr><th>Status</th><td>{{ report.status.title() }}</td></tr>
+            <tr><th>Details</th><td>{{ report.details or 'No additional details' }}</td></tr>
+        </table>
+    </div>
+
+    {% if related_events %}
+    <div class="section">
+        <h3>Related System Events</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>Time</th>
+                    <th>Event Type</th>
+                    <th>Source IP</th>
+                    <th>Risk Score</th>
+                    <th>Description</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for event in related_events %}
+                <tr>
+                    <td>{{ event.timestamp }}</td>
+                    <td>{{ event.event_type }}</td>
+                    <td>{{ event.source_ip or 'N/A' }}</td>
+                    <td>{{ "%.2f"|format(event.risk_score or 0) }}</td>
+                    <td>{{ event.description or 'N/A' }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% endif %}
+
+    {% if related_ftp %}
+    <div class="section">
+        <h3>Related FTP Activities</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>Time</th>
+                    <th>Client IP</th>
+                    <th>Action</th>
+                    <th>File Path</th>
+                    <th>Risk Score</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for ftp in related_ftp %}
+                <tr>
+                    <td>{{ ftp.timestamp }}</td>
+                    <td>{{ ftp.client_ip or 'N/A' }}</td>
+                    <td>{{ ftp.action }}</td>
+                    <td>{{ ftp.file_path or 'N/A' }}</td>
+                    <td>{{ "%.2f"|format(ftp.risk_score or 0) }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% endif %}
+
+    <div class="footer">
+        <p><strong>Generated:</strong> {{ current_time }}</p>
+        <p><em>This is an automated security report from the Insider Threat Detection System</em></p>
+    </div>
+</body>
+</html>

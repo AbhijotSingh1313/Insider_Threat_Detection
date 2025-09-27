@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Report #{{ report.id }} Details</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}"/>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>📋 Report #{{ report.id }} Details</h1>
+      <div>
+        <a href="/reports">← Back to Reports</a>
+        <a href="/">← Dashboard</a>
+      </div>
+    </header>
+
+    <div class="section">
+      <h2>Report Summary</h2>
+      <div class="report-details">
+        <p><strong>Activity:</strong> {{ report.activity_type }}</p>
+        <p><strong>User:</strong> {{ report.username or 'N/A' }}</p>
+        <p><strong>Source IP:</strong> {{ report.source_ip or 'N/A' }}</p>
+        <p><strong>Time:</strong> {{ report.timestamp }}</p>
+        <p><strong>Risk Level:</strong> <span class="risk-{{ report.risk_level.lower() }}">{{ report.risk_level }}</span></p>
+        <p><strong>Status:</strong> <span class="status-{{ report.status }}">{{ report.status.title() }}</span></p>
+        <p><strong>Details:</strong> {{ report.details or 'No additional details' }}</p>
+      </div>
+
+      {% if report.status == 'new' %}
+      <div class="actions">
+        
+      </div>
+      {% endif %}
+    </div>
+
+    {% if related_events %}
+    <div class="section">
+      <h3>Related Event Logs</h3>
+      <table>
+        <tr><th>Time</th><th>Event</th><th>Description</th><th>Risk</th></tr>
+        {% for event in related_events %}
+        <tr class="{{ 'suspicious' if event.is_suspicious }}">
+          <td>{{ event.timestamp }}</td>
+          <td>{{ event.event_type }}</td>
+          <td>{{ event.description }}</td>
+          <td>{{ (event.risk_score * 100)|round(1) }}%</td>
+        </tr>
+        {% endfor %}
+      </table>
+    </div>
+    {% endif %}
+
+    {% if related_ftp %}
+    <div class="section">
+      <h3>Related FTP Activity</h3>
+      <table>
+        <tr><th>Time</th><th>Action</th><th>IP</th><th>File</th><th>Risk</th></tr>
+        {% for log in related_ftp %}
+        <tr class="{{ 'suspicious' if log.is_suspicious }}">
+          <td>{{ log.timestamp }}</td>
+          <td>{{ log.action }}</td>
+          <td>{{ log.client_ip }}</td>
+          <td>{{ log.file_path or 'N/A' }}</td>
+          <td>{{ (log.risk_score * 100)|round(1) }}%</td>
+        </tr>
+        {% endfor %}
+      </table>
+    </div>
+    {% endif %}
+  </div>
+
+  <script>
+    function acknowledge(reportId) {
+      if (!confirm('Mark as acknowledged?')) return;
+      fetch(`/api/acknowledge/${reportId}`, { method: 'POST' })
+        .then(res => res.json())
+        .then(data => {
+          if (data.success) location.reload();
+          else alert('Error: ' + data.error);
+        });
+    }
+  </script>
+</body>
+</html>

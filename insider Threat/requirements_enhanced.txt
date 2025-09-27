@@ -1,0 +1,17 @@
+Flask
+psutil
+scikit-learn
+pandas
+numpy
+pdfkit
+pywin32; sys_platform == "win32"
+watchdog
+pyngrok
+requests
+Jinja2
+MarkupSafe
+itsdangerous
+click
+Werkzeug
+colorama
+pyftpdlib

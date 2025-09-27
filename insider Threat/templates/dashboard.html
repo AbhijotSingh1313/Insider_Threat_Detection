@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Security Monitoring Dashboard</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Insider Threat Detection System     (Made by- Abhijot Singh)</h1>
+            <div class="status">
+                Monitoring: {{ 'ACTIVE' if monitoring_status else 'INACTIVE' }}
+                <span id="live-time"></span>
+            </div>
+        </header>
+
+        <div class="controls">
+            <button onclick="startMonitoring()" {{ 'disabled' if monitoring_status }}>Start Monitoring</button>
+            <button onclick="stopMonitoring()" {{ 'disabled' if not monitoring_status }}>Stop Monitoring</button>
+            <button onclick="window.location.reload()">Refresh</button>
+            <a href="/reports">View Reports</a>
+        </div>
+
+        <div class="stats">
+            <div class="stat-box">
+                <h3>{{ stats.today_events or 0 }}</h3>
+                <p>Today's Events</p>
+            </div>
+            <div class="stat-box">
+                <h3>{{ stats.today_ftp or 0 }}</h3>
+                <p>FTP Activities</p>
+            </div>
+            <div class="stat-box">
+                <h3>{{ (stats.today_suspicious_events or 0) + (stats.today_suspicious_ftp or 0) }}</h3>
+                <p>Suspicious Activities</p>
+            </div>
+            <div class="stat-box">
+                <h3 id="pending-alerts">{{ stats.pending_reports or 0 }}</h3>
+                <p>Pending Alerts</p>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>Recent Suspicious Activities</h2>
+            <table>
+                <tr>
+                    <th>Time</th>
+                    <th>Activity</th>
+                    <th>User</th>
+                    <th>IP</th>
+                    <th>Risk</th>
+                </tr>
+                {% if suspicious_activities %}
+                    {% for activity in suspicious_activities %}
+                    <tr class="risk-{{ activity.risk_level.lower() }}">
+                        <td>{{ activity.timestamp }}</td>
+                        <td>{{ activity.activity_type }}</td>
+                        <td>{{ activity.username or 'N/A' }}</td>
+                        <td>{{ activity.source_ip or 'N/A' }}</td>
+                        <td><span class="risk-{{ activity.risk_level.lower() }}">{{ activity.risk_level }}</span></td>
+                    </tr>
+                    {% endfor %}
+                {% else %}
+                    <tr><td colspan="5">No suspicious activities detected</td></tr>
+                {% endif %}
+            </table>
+        </div>
+
+        <div class="two-columns">
+            <div class="section">
+                <h3>Recent Events</h3>
+                <table>
+                    {% if recent_events %}
+                        {% for event in recent_events %}
+                        <tr class="{{ 'suspicious' if event.is_suspicious }}">
+                            <td>{{ event.timestamp }}</td>
+                            <td>{{ event.event_type }}</td>
+                            <td>{{ event.username or 'N/A' }}</td>
+                            <td>{{ (event.risk_score * 100)|round(1) }}%</td>
+                        </tr>
+                        {% endfor %}
+                    {% else %}
+                        <tr><td colspan="4">No recent events</td></tr>
+                    {% endif %}
+                </table>
+            </div>
+
+            <div class="section">
+                <h3>🖥️ Recent FTP Activity</h3>
+                <table>
+                    {% if recent_ftp %}
+                        {% for log in recent_ftp %}
+                        <tr class="{{ 'suspicious' if log.is_suspicious }}">
+                            <td>{{ log.timestamp }}</td>
+                            <td>{{ log.action }}</td>
+                            <td>{{ log.username or 'N/A' }}</td>
+                            <td>{{ (log.risk_score * 100)|round(1) }}%</td>
+                        </tr>
+                        {% endfor %}
+                    {% else %}
+                        <tr><td colspan="4">No recent FTP activity</td></tr>
+                    {% endif %}
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function updateStats() {
+            fetch('/api/stats')
+                .then(response => response.json())
+                .then(data => {
+                    if (!data.error) {
+                        document.getElementById('pending-alerts').textContent = data.new_alerts;
+                        document.getElementById('live-time').textContent = data.timestamp;
+                    }
+                });
+        }
+
+        function startMonitoring() {
+            fetch('/monitoring/start')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) window.location.reload();
+                    else alert('Error: ' + data.message);
+                });
+        }
+
+        function stopMonitoring() {
+            fetch('/monitoring/stop')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) window.location.reload();
+                    else alert('Error: ' + data.message);
+                });
+        }
+
+        setInterval(updateStats, 10000);
+        updateStats();
+    </script>
+</body>
+</html>

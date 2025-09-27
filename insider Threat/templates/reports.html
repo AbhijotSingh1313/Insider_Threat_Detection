@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Suspicious Activity Reports</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>📋 Suspicious Activity Reports</h1>
+            <a href="{{ url_for('dashboard') }}">🏠 Back to Dashboard</a>
+            <a href="{{ url_for('download_all_reports_pdf') }}" class="bulk-pdf-btn">📄 Download All as PDF</a>
+        </header>
+
+        <div class="filters">
+            <form method="GET">
+                <select name="status">
+                    <option value="all" {{ 'selected' if current_status == 'all' }}>All Status</option>
+                    <option value="new" {{ 'selected' if current_status == 'new' }}>New</option>
+                    <option value="acknowledged" {{ 'selected' if current_status == 'acknowledged' }}>Acknowledged</option>
+                    <option value="resolved" {{ 'selected' if current_status == 'resolved' }}>Resolved</option>
+                </select>
+                
+                <select name="risk">
+                    <option value="all" {{ 'selected' if current_risk == 'all' }}>All Risk</option>
+                    <option value="HIGH" {{ 'selected' if current_risk == 'HIGH' }}>High</option>
+                    <option value="MEDIUM" {{ 'selected' if current_risk == 'MEDIUM' }}>Medium</option>
+                    <option value="LOW" {{ 'selected' if current_risk == 'LOW' }}>Low</option>
+                </select>
+                
+                <button type="submit">Filter</button>
+            </form>
+        </div>
+
+        <div class="section">
+            <table>
+                <tr>
+                    <th>ID</th>
+                    <th>Time</th>
+                    <th>Activity</th>
+                    <th>User</th>
+                    <th>IP</th>
+                    <th>Risk</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                </tr>
+                {% if reports %}
+                    {% for report in reports %}
+                    <tr class="risk-{{ report.risk_level.lower() }}">
+                        <td>{{ report.id }}</td>
+                        <td>{{ report.timestamp }}</td>
+                        <td>{{ report.activity_type }}</td>
+                        <td>{{ report.username or 'N/A' }}</td>
+                        <td>{{ report.source_ip or 'N/A' }}</td>
+                        <td><span class="risk-{{ report.risk_level.lower() }}">{{ report.risk_level }}</span></td>
+                        <td><span class="status-{{ report.status }}">{{ report.status.title() }}</span></td>
+                        <td class="actions-cell">
+                            <div class="action-buttons">
+                                <a href="{{ url_for('view_report', report_id=report.id) }}" class="view-btn">👁️ View</a>
+                                <a href="{{ url_for('download_report_pdf', report_id=report.id) }}" target="_blank" class="pdf-btn">📄 PDF</a>
+                                <button onclick="showEmailModal({{ report.id }})" class="email-btn">📧 Email</button>
+                                {% if report.status == 'new' %}
+                                    <button onclick="acknowledge({{ report.id }})" class="ack-btn">✅ Ack</button>
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                {% else %}
+                    <tr><td colspan="8">No reports found</td></tr>
+                {% endif %}
+            </table>
+        </div>
+    </div>
+
+    <!-- EMAIL MODAL -->
+    <div id="emailModal" class="modal" style="display:none;">
+        <div class="modal-content">
+            <span class="close" onclick="closeEmailModal()">&times;</span>
+            <h3>📧 Email Report</h3>
+            <div id="emailStatus"></div>
+            <form id="emailForm">
+                <input type="hidden" id="reportId" value="">
+                <label for="email">Email Address:</label>
+                <input type="email" id="email" placeholder="recipient@example.com" required>
+                <br><br>
+                <button type="button" onclick="sendEmail()" id="sendBtn">Send Report</button>
+                <button type="button" onclick="closeEmailModal()">Cancel</button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // EXISTING ACKNOWLEDGE FUNCTION (UNCHANGED)
+        function acknowledge(reportId) {
+            if (!confirm('Mark as acknowledged?')) return;
+            
+            fetch(`/api/acknowledge/${reportId}`, { method: 'POST' })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        location.reload();
+                    } else {
+                        alert('Error: ' + data.error);
+                    }
+                })
+                .catch(err => {
+                    alert('Network error: ' + err.message);
+                });
+        }
+
+        // NEW EMAIL MODAL FUNCTIONS
+        function showEmailModal(reportId) {
+            document.getElementById('reportId').value = reportId;
+            document.getElementById('emailModal').style.display = 'block';
+            document.getElementById('emailStatus').innerHTML = '';
+        }
+
+        function closeEmailModal() {
+            document.getElementById('emailModal').style.display = 'none';
+            document.getElementById('email').value = '';
+            document.getElementById('emailStatus').innerHTML = '';
+        }
+
+        function sendEmail() {
+            const reportId = document.getElementById('reportId').value;
+            const email = document.getElementById('email').value;
+            const sendBtn = document.getElementById('sendBtn');
+            const statusDiv = document.getElementById('emailStatus');
+            
+            if (!email) {
+                alert('Please enter an email address');
+                return;
+            }
+            
+            // Show loading state
+            sendBtn.disabled = true;
+            sendBtn.textContent = 'Sending...';
+            statusDiv.innerHTML = '<div class="loading">📧 Preparing and sending email...</div>';
+            
+            const formData = new FormData();
+            formData.append('email', email);
+            
+            fetch(`/report/${reportId}/email`, {
+                method: 'POST',
+                body: formData
+            })
+            .then(res => res.json())
+            .then(data => {
+                sendBtn.disabled = false;
+                sendBtn.textContent = 'Send Report';
+                
+                if (data.success) {
+                    statusDiv.innerHTML = '<div class="success">✅ ' + data.message + '</div>';
+                    setTimeout(() => {
+                        closeEmailModal();
+                    }, 2000);
+                } else {
+                    statusDiv.innerHTML = '<div class="error">❌ Error: ' + data.error + '</div>';
+                }
+            })
+            .catch(err => {
+                sendBtn.disabled = false;
+                sendBtn.textContent = 'Send Report';
+                statusDiv.innerHTML = '<div class="error">❌ Network error: ' + err.message + '</div>';
+            });
+        }
+
+        // Close modal when clicking outside
+        window.onclick = function(event) {
+            const modal = document.getElementById('emailModal');
+            if (event.target == modal) {
+                closeEmailModal();
+            }
+        }
+    </script>
+
+    <!-- ENHANCED CSS STYLES -->
+    <style>
+        .bulk-pdf-btn {
+            display: inline-block;
+            padding: 8px 15px;
+            margin-left: 15px;
+            background-color: #007bff;
+            color: white;
+            text-decoration: none;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        
+        .bulk-pdf-btn:hover {
+            background-color: #0056b3;
+        }
+        
+        .actions-cell {
+            min-width: 200px;
+        }
+        
+        .action-buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+        }
+        
+        .view-btn, .pdf-btn, .email-btn, .ack-btn {
+            display: inline-block;
+            padding: 3px 8px;
+            text-decoration: none;
+            border: none;
+            border-radius: 3px;
+            font-size: 11px;
+            cursor: pointer;
+            text-align: center;
+            min-width: 60px;
+        }
+        
+        .view-btn {
+            background-color: #6c757d;
+            color: white;
+        }
+        
+        .pdf-btn {
+            background-color: #dc3545;
+            color: white;
+        }
+        
+        .email-btn {
+            background-color: #28a745;
+            color: white;
+        }
+        
+        .ack-btn {
+            background-color: #ffc107;
+            color: black;
+        }
+        
+        .view-btn:hover, .pdf-btn:hover, .email-btn:hover, .ack-btn:hover {
+            opacity: 0.8;
+        }
+
+        /* Modal Styles */
+        .modal {
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+        }
+
+        .modal-content {
+            background-color: #fefefe;
+            margin: 10% auto;
+            padding: 25px;
+            border: 1px solid #888;
+            width: 400px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        .close {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+            line-height: 1;
+        }
+
+        .close:hover {
+            color: black;
+        }
+
+        #emailForm label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+
+        #emailForm input[type="email"] {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 15px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+            box-sizing: border-box;
+        }
+
+        #emailForm button {
+            padding: 10px 20px;
+            margin: 5px 10px 5px 0;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        #sendBtn {
+            background-color: #007bff;
+            color: white;
+        }
+
+        #sendBtn:hover {
+            background-color: #0056b3;
+        }
+
+        #sendBtn:disabled {
+            background-color: #6c757d;
+            cursor: not-allowed;
+        }
+
+        #emailForm button:last-child {
+            background-color: #6c757d;
+            color: white;
+        }
+
+        #emailForm button:last-child:hover {
+            background-color: #545b62;
+        }
+
+        .success {
+            color: #28a745;
+            font-weight: bold;
+            margin: 10px 0;
+        }
+
+        .error {
+            color: #dc3545;
+            font-weight: bold;
+            margin: 10px 0;
+        }
+
+        .loading {
+            color: #007bff;
+            font-style: italic;
+            margin: 10px 0;
+        }
+
+        /* Responsive table */
+        @media (max-width: 768px) {
+            .action-buttons {
+                flex-direction: row;
+                flex-wrap: wrap;
+            }
+            
+            .modal-content {
+                width: 90%;
+                margin: 5% auto;
+            }
+        }
+    </style>
+</body>
+</html>
